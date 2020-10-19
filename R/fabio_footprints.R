@@ -4,6 +4,7 @@
 
 library(Matrix)
 library(tidyverse)
+library(data.table)
 
 rm(list=ls()); gc()
 
@@ -15,16 +16,22 @@ agg <- function(x) { x <- as.matrix(x) %*% sapply(unique(colnames(x)),"==",colna
 # Make intitial settings
 #-------------------------------------------------------------------------
 # read region classification
-regions <- read.csv(file="./input/fabio_countries.csv", header=TRUE)
+# regions <- fread(file="./input/regions_full.csv")
+# regions <- regions[cbs==TRUE]
+regions <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/regions.csv")
 # read commodity classification
-items <- read.csv(file="./input/fabio_items.csv", header=TRUE)
+items <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/items.csv")
 nrreg <- nrow(regions)
 nrcom <- nrow(items)
-index <- data.frame(ISO = rep(regions$ISO, each = nrcom),
-                    country = rep(regions$Country, each = nrcom),
-                    item = rep(items$Item, nrreg),
-                    group = rep(items$Group, nrreg))
+index <- data.table(code = rep(regions$code, each = nrcom),
+                    iso3c = rep(regions$iso3c, each = nrcom),
+                    country = rep(regions$name, each = nrcom),
+                    item = rep(items$item, nrreg),
+                    group = rep(items$group, nrreg))
 
+X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/X.rds"))
+Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/Y.rds"))
+E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
 
 allocation <- c("mass","value")[1]
 year <- 2012
@@ -32,26 +39,30 @@ year <- 2012
 #-------------------------------------------------------------------------
 # Read data
 #-------------------------------------------------------------------------
-if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/",year,"_L_mass.rds"))
-if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/",year,"_L_price.rds"))
+if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_mass.rds"))
+if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_value.rds"))
 
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/",year,"_X.rds"))
-Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/",year,"_Y.rds"))
-E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/",year,"_E.rds"))
-
-grazing <- read.csv("input/grazing.csv")
-E$Landuse[E$Item.Code==2001] <- E$Biomass[E$Item.Code==2001] / grazing$t_per_ha
-
-Y_codes <- data.frame(ISO = substr(colnames(Y),1,3))
-Y_codes$Continent = regions$EU27[match(Y_codes$ISO,regions$ISO)]
-Y_codes$FD <- substr(colnames(Y),5,100)
+Xi <- X[, as.character(year)]
+Yi <- Y[[as.character(year)]]
+Ei <- E[[as.character(year)]]
 
 
-footprint <- function(country = "EU", extension = "Landuse", consumption = "Food", allocation = "value"){
+Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
+Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
+Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
+Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
+
+
+country = "EU27"
+extension = "landuse"
+consumption = "food"
+allocation = "value"
+
+footprint <- function(country = "EU27", extension = "landuse", consumption = "food", allocation = "value"){
   #-------------------------------------------------------------------------
   # Prepare Multipliers
   #-------------------------------------------------------------------------
-  ext <- as.vector(E[,extension]) / X
+  ext <- as.vector(as.matrix(as.vector(Ei[, ..extension]) / as.vector(Xi)))
   ext[!is.finite(ext)] <- 0
   # ext[ext < 0] <- 0         # eliminate negative values
   MP <- ext * L
@@ -59,19 +70,24 @@ footprint <- function(country = "EU", extension = "Landuse", consumption = "Food
   #-------------------------------------------------------------------------
   # Calculate detailed Footprints
   #-------------------------------------------------------------------------
-  if(country=="EU"){
-    Y_country <- Y[,Y_codes$Continent == "EU"]
-    colnames(Y_country) <- Y_codes$FD[Y_codes$Continent == "EU"]
+  if(country=="EU27"){
+    Y_country <- Yi[, (Y_codes$continent == "EU" & Y_codes$iso3c != "GBR"), with=FALSE]
+    colnames(Y_country) <- Y_codes$fd[Y_codes$continent == "EU" & Y_codes$iso3c != "GBR"]
+    Y_country <- agg(Y_country)
+  } else if(country=="EU"){
+    Y_country <- Yi[, Y_codes$continent == "EU", with=FALSE]
+    colnames(Y_country) <- Y_codes$fd[Y_codes$continent == "EU"]
     Y_country <- agg(Y_country)
   } else {
-    Y_country <- Y[,Y_codes$ISO == country]
-    colnames(Y_country) <- Y_codes$FD[Y_codes$ISO == country]
+    Y_country <- Yi[, Y_codes$iso3c == country]
+    colnames(Y_country) <- Y_codes$fd[Y_codes$iso3c == country]
   }
-  FP <- t(t(MP) * Y_country[,consumption])
-  colnames(FP) <- rownames(FP) <- paste0(index$ISO, "_", index$item)
+  FP <- t(t(MP) * as.vector(as.matrix(Y_country[,consumption])))
+  colnames(FP) <- rownames(FP) <- paste0(index$iso3c, "_", index$item)
   results <- FP %>% 
+    as.matrix() %>% 
     as_tibble() %>% 
-    mutate(origin = paste0(index$ISO, "_", index$item)) %>% 
+    mutate(origin = paste0(index$iso3c, "_", index$item)) %>% 
     gather(index, value, -origin) %>% 
     mutate(country_origin = substr(origin,1,3)) %>% 
     mutate(item_origin = substr(origin,5,100)) %>% 
@@ -80,44 +96,58 @@ footprint <- function(country = "EU", extension = "Landuse", consumption = "Food
     select(-index, -origin) %>% 
     filter(value != 0)
   
-  results$group_origin <- items$Com.Group[match(results$item_origin,items$Item)]
-  results$final_product_group <- items$Com.Group[match(results$final_product,items$Item)]
+  results$group_origin <- items$comm_group[match(results$item_origin,items$item)]
+  results$final_product_group <- items$comm_group[match(results$final_product,items$item)]
+  results$continent_origin <- regions$continent[match(results$country_origin, regions$iso3c)]
+  results$continent_origin[results$country_origin==country] <- country
   
-  data.table::fwrite(results, file=paste0("./output/FABIO_",country,"_",extension,"_",consumption,"_",allocation,"-alloc.csv"), sep=",")
+  fwrite(results, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_full.csv"), sep=",")
   
   # data <- results %>% 
-  #   group_by(final_product,item_origin,country_origin) %>% 
+  #   group_by(final_product, group_origin, country_origin) %>% 
   #   summarise(value = round(sum(value))) %>% 
-  #   filter(value != 0)
-  # data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",extension,"_",consumption,"_",allocation,"-alloc_summary.csv"), sep=",")
+  #   filter(value != 0) %>% 
+  #   spread(group_origin, value)
+  # 
+  # fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc.csv"), sep=",")
   
   data <- results %>% 
-    group_by(final_product, group_origin) %>% 
+    group_by(final_product, continent_origin) %>% 
     filter(value != 0) %>% 
     summarise(value = round(sum(value))) %>% 
-    spread(group_origin, value, fill = 0)
-  data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",extension,"_",consumption,"_",allocation,"-alloc_summary.csv"), sep=",")
+    spread(continent_origin, value, fill = 0)
+  data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_finalproduct_continent.csv"), sep=",")
   
-  return(data)
+  # data <- results %>% 
+  #   group_by(item_origin, continent_origin) %>% 
+  #   filter(value != 0) %>% 
+  #   summarise(value = round(sum(value))) %>% 
+  #   spread(continent_origin, value, fill = 0)
+  # data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_primarycrop_continent.csv"), sep=",")
+  
 }
+
 
 
 #-------------------------------------------------------------------------
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
-extensions <- colnames(E)[7:10]
-consumption_categories <- c("Food","OtherUses","StockVariation","Balancing")
-countries <- c("USA","CAN","AUS","EU")
+extensions <- colnames(Ei)[c(8,10:11)]
+consumption_categories <- c("food","other","stock_addition","balancing","losses")
+countries <- c("USA","CAN","AUS","EU27")
+countries <- c("DEU")
 
-country <- "EU"
-# calculate footprints
-# for(country in countries){
-  for(extension in extensions[-2]){
+country <- "EU27"
+for(country in countries){
+  for(extension in extensions){
     for(consumption in consumption_categories){
-      data <- footprint(country = country, extension = extension, consumption = consumption, allocation = allocation)
+      # calculate footprints
+      footprint(country = country, extension = extension, consumption = consumption, allocation = allocation)
     }
   }
-# }
+}
+
+
 
 
 
