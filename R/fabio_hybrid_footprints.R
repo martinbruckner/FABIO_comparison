@@ -4,6 +4,7 @@
 
 library(Matrix)
 library(tidyverse)
+library(data.table)
 
 rm(list=ls()); gc()
 
@@ -59,7 +60,7 @@ footprint <- function(country = "EU27", extension = "landuse", allocation = "val
   #-------------------------------------------------------------------------
   ext <- as.vector(as.matrix(as.vector(Ei[, ..extension]) / as.vector(Xi)))
   ext[!is.finite(ext)] <- 0
-  ext[ext < 0] <- 0         # eliminate negative values
+  # ext[ext < 0] <- 0         # eliminate negative values
   MP <- ext * L
   #-------------------------------------------------------------------------
   # Prepare Final Demand
@@ -90,44 +91,40 @@ footprint <- function(country = "EU27", extension = "landuse", allocation = "val
     mutate(country_origin = substr(origin,1,3)) %>% 
     mutate(item_origin = substr(origin,5,100)) %>% 
     mutate(country_target = substr(index,1,2)) %>% 
-    mutate(item_target = substr(index,4,100)) %>% 
+    mutate(final_product = substr(index,4,100)) %>% 
     select(-index, -origin) %>% 
     filter(value != 0)
   
   results$group_origin <- items$comm_group[match(results$item_origin,items$item)]
-  results$group_target <- IO.codes$Sector.Group[match(results$item_target, IO.codes$Product.Name)]
+  results$group_target <- IO.codes$Sector.Group[match(results$final_product, IO.codes$Product.Name)]
+  results$continent_origin <- regions$continent[match(results$country_origin, regions$iso3c)]
+  results$continent_origin[results$country_origin==country] <- country
   
   # data.table::fwrite(results, file=paste0("./output/FABIO_hybrid_",country,"_",year,"_",extension,"_results_",allocation,"-alloc_full.csv"), sep=",")
   
+  data <- results %>%
+    group_by(final_product, group_origin, country_origin, continent_origin) %>%
+    summarise(value = round(sum(value))) %>%
+    filter(value != 0) %>%
+    spread(group_origin, value, fill = 0)
+  fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_other_",allocation,"-alloc_detailed.csv"), sep=",")
+  
   data <- results %>% 
-    group_by(item_target, group_origin) %>% 
+    group_by(final_product, group_origin) %>% 
     summarise(value = round(sum(value))) %>% 
     filter(value != 0) %>% 
     spread(group_origin, value, fill = 0)
-  data$index <- IO.codes$Index[IO.codes$Country.Code=="AT"][match(substr(data$item_target,1,50), substr(IO.codes$Product.Name[IO.codes$Country.Code=="AT"],1,50))]
+  data$index <- IO.codes$Index[IO.codes$Country.Code=="AT"][match(substr(data$final_product,1,50), substr(IO.codes$Product.Name[IO.codes$Country.Code=="AT"],1,50))]
   data <- data[,c(ncol(data),1:(ncol(data)-1))]
   data <- data[order(data$index),]
-  data.table::fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_OtherUses_",allocation,"-alloc.csv"), sep=",")
-  
-  results$region_origin <- regions$EU27[match(results$country_origin, regions$ISO)]
-  if(! country %in% regions$EU27){
-    results$region_origin[results$country_origin == regions$ISO[regions$ISO2==country & !is.na(regions$ISO2)]] <- 
-      regions$ISO[regions$ISO2==country & !is.na(regions$ISO2)]
-  }
+  fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_other_",allocation,"-alloc_products-inputs.csv"), sep=",")
   
   data <- results %>% 
-    group_by(item_target, region_origin) %>% 
-    summarise(value = round(sum(value))) %>% 
+    group_by(item_origin, continent_origin) %>% 
     filter(value != 0) %>% 
-    spread(region_origin, value, fill = 0)
-  data.table::fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_OtherUses_",allocation,"-alloc_origin-final-product.csv"), sep=",")
-  
-  data <- results %>% 
-    group_by(item_origin, region_origin) %>% 
     summarise(value = round(sum(value))) %>% 
-    filter(value != 0) %>% 
-    spread(region_origin, value, fill = 0)
-  data.table::fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_OtherUses_",allocation,"-alloc_origin-primary-crops.csv"), sep=",")
+    spread(continent_origin, value, fill = 0)
+  data.table::fwrite(data, file=paste0("./output/FABIO-hybrid_",country,"_",year,"_",extension,"_other_",allocation,"-alloc_inputs-continent.csv"), sep=",")
   
 }
 

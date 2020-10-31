@@ -103,20 +103,20 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
   
   fwrite(results, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_full.csv"), sep=",")
   
-  # data <- results %>% 
-  #   group_by(final_product, group_origin, country_origin) %>% 
-  #   summarise(value = round(sum(value))) %>% 
-  #   filter(value != 0) %>% 
-  #   spread(group_origin, value)
-  # 
-  # fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc.csv"), sep=",")
+  data <- results %>%
+    group_by(final_product, group_origin, country_origin) %>%
+    summarise(value = round(sum(value))) %>%
+    filter(value != 0) %>%
+    spread(group_origin, value)
+
+  fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_detailed.csv"), sep=",")
   
   data <- results %>% 
     group_by(final_product, continent_origin) %>% 
     filter(value != 0) %>% 
     summarise(value = round(sum(value))) %>% 
     spread(continent_origin, value, fill = 0)
-  data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_finalproduct_continent.csv"), sep=",")
+  data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_continent.csv"), sep=",")
   
   # data <- results %>% 
   #   group_by(item_origin, continent_origin) %>% 
