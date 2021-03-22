@@ -33,30 +33,11 @@ X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/X.rds"))
 Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/Y.rds"))
 E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
 
-allocation <- c("mass","value")[1]
-year <- 2012
 
-#-------------------------------------------------------------------------
-# Read data
-#-------------------------------------------------------------------------
-if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_mass.rds"))
-if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_value.rds"))
-
-Xi <- X[, as.character(year)]
-Yi <- Y[[as.character(year)]]
-Ei <- E[[as.character(year)]]
-
-
-Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
-Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
-Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
-Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
-
-
-country = "EU27"
-extension = "landuse"
-consumption = "food"
-allocation = "value"
+# country = "EU27"
+# extension = "landuse"
+# consumption = "food"
+# allocation = "value"
 
 footprint <- function(country = "EU27", extension = "landuse", consumption = "food", allocation = "value"){
   #-------------------------------------------------------------------------
@@ -101,7 +82,7 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
   results$continent_origin <- regions$continent[match(results$country_origin, regions$iso3c)]
   results$continent_origin[results$country_origin==country] <- country
   
-  fwrite(results, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_full.csv"), sep=",")
+  # fwrite(results, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_full.csv"), sep=",")
   
   data <- results %>%
     group_by(final_product, group_origin, country_origin) %>%
@@ -132,17 +113,39 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
 #-------------------------------------------------------------------------
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
+allocations = c("mass","value")
+year <- 2012
+
+# Read data
+Xi <- X[, as.character(year)]
+Yi <- Y[[as.character(year)]]
+Ei <- E[[as.character(year)]]
+
+Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
+Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
+Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
+Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
+
 extensions <- colnames(Ei)[c(8,10:11)]
 consumption_categories <- c("food","other","stock_addition","balancing","losses")
 countries <- c("USA","CAN","AUS","EU27")
 countries <- c("DEU")
+countries <- "EU27"
+allocation = "mass"
+country = "EU27"
+extension = "landuse"
+consumption = "food"
 
-country <- "EU27"
-for(country in countries){
-  for(extension in extensions){
-    for(consumption in consumption_categories){
-      # calculate footprints
-      footprint(country = country, extension = extension, consumption = consumption, allocation = allocation)
+for(allocation in allocations){
+  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_mass.rds"))
+  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_value.rds"))
+  
+  for(country in countries){
+    for(extension in extensions){
+      for(consumption in consumption_categories){
+        # calculate footprints
+        footprint(country = country, extension = extension, consumption = consumption, allocation = allocation)
+      }
     }
   }
 }
@@ -152,31 +155,31 @@ for(country in countries){
 
 
 
-#-------------------------------------------------------------------------
-# Calculate aggregate footprints
-#-------------------------------------------------------------------------
-footprint <- function(region = character(), Y = matrix(), year=integer(), MP = matrix(), type=character()){
-  FP <- Y[,1:2] * colSums(MP)
-  FP[FP<0] <- 0     # filter negative values
-  FP[rep(items$Item,nrreg)=="Cocoa Beans and products",][FP[rep(items$Item,nrreg)=="Cocoa Beans and products",] > 
-                                                           mean(FP)*1000] <- 0   # filter outliers
-  FP <- t(FP)
-  colnames(FP) <- rep(c(rep("crop",96),rep("lvst",130-96)), nrreg)
-  FP <- agg(FP)
-  FP <- reshape2::melt(FP)
-  FP$year <- year
-  FP$region <- region
-  FP$type <- type
-  return(FP)
-}
-results <- rbind(results, footprint(region = "EU", Y = Y_EU, year = year, MP = MP, allocation))
-results <- rbind(results, footprint(region = "EU", Y = Y_EU, year = year, MP = MP, allocation))
-
-imports <- rbind(imports, footprint(region = "EU", Y = Y_EU, year = year, MP = MP[rep(regions$Continent, each = nrow(items)) != "EU", ], allocation))
-imports <- rbind(imports, footprint(region = "EU", Y = Y_EU, year = year, MP = MP[rep(regions$Continent, each = nrow(items)) != "EU", ], allocation))
-
-data.table::fwrite(results, file="./results/FABIO_land_results.csv", sep=",")
-data.table::fwrite(imports, file="./results/FABIO_land_imports.csv", sep=",")
+# #-------------------------------------------------------------------------
+# # Calculate aggregate footprints
+# #-------------------------------------------------------------------------
+# footprint <- function(region = character(), Y = matrix(), year=integer(), MP = matrix(), type=character()){
+#   FP <- Y[,1:2] * colSums(MP)
+#   FP[FP<0] <- 0     # filter negative values
+#   FP[rep(items$Item,nrreg)=="Cocoa Beans and products",][FP[rep(items$Item,nrreg)=="Cocoa Beans and products",] > 
+#                                                            mean(FP)*1000] <- 0   # filter outliers
+#   FP <- t(FP)
+#   colnames(FP) <- rep(c(rep("crop",96),rep("lvst",130-96)), nrreg)
+#   FP <- agg(FP)
+#   FP <- reshape2::melt(FP)
+#   FP$year <- year
+#   FP$region <- region
+#   FP$type <- type
+#   return(FP)
+# }
+# results <- rbind(results, footprint(region = "EU", Y = Y_EU, year = year, MP = MP, allocation))
+# results <- rbind(results, footprint(region = "EU", Y = Y_EU, year = year, MP = MP, allocation))
+# 
+# imports <- rbind(imports, footprint(region = "EU", Y = Y_EU, year = year, MP = MP[rep(regions$Continent, each = nrow(items)) != "EU", ], allocation))
+# imports <- rbind(imports, footprint(region = "EU", Y = Y_EU, year = year, MP = MP[rep(regions$Continent, each = nrow(items)) != "EU", ], allocation))
+# 
+# data.table::fwrite(results, file="./results/FABIO_land_results.csv", sep=",")
+# data.table::fwrite(imports, file="./results/FABIO_land_imports.csv", sep=",")
 
 
 

@@ -28,31 +28,10 @@ index <- data.table(code = rep(regions$code, each = nrcom),
                     group = rep(items$group, nrreg))
 
 X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/X.rds"))
-Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/Y.rds"))
 E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
-
-allocation <- c("mass","value")[1]
-year <- 2012
-#-------------------------------------------------------------------------
-# Read data
-#-------------------------------------------------------------------------
-if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_mass.rds"))
-if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_price.rds"))
-
-Xi <- X[, as.character(year)]
-Yi <- Y[[as.character(year)]]
-Ei <- E[[as.character(year)]]
-
-load(file=paste0("/mnt/nfs_fineprint/tmp/exiobase/pxp/",year,"_x.RData"))
-load(file=paste0("/mnt/nfs_fineprint/tmp/exiobase/pxp/",year,"_Y.RData"))
-
 load(file="/mnt/nfs_fineprint/tmp/exiobase/Y.codes.RData")
 load(file="/mnt/nfs_fineprint/tmp/exiobase/pxp/IO.codes.RData")
 
-
-country = "EU27"
-extension = "landuse"
-allocation = "value"
 
 footprint <- function(country = "EU27", extension = "landuse", allocation = "value"){
   #-------------------------------------------------------------------------
@@ -132,16 +111,34 @@ footprint <- function(country = "EU27", extension = "landuse", allocation = "val
 #-------------------------------------------------------------------------
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
+allocations = c("mass","value")
+year <- 2012
+
+Xi <- X[, as.character(year)]
+Ei <- E[[as.character(year)]]
+
+load(file=paste0("/mnt/nfs_fineprint/tmp/exiobase/pxp/",year,"_x.RData"))
+load(file=paste0("/mnt/nfs_fineprint/tmp/exiobase/pxp/",year,"_Y.RData"))
+
+
 extensions <- colnames(Ei)[c(8,10:11)]
 # consumption_categories <- Y.codes$`Final Demand Category`[1:7]
 countries <- c("US","CA","AU","EU")
+countries <- "AT"
+countries <- "EU27"
+extension <- "landuse"
+allocation <- "value"
 
-country <- "AT"
-country <- "EU27"
+
 # calculate footprints
-for(country in countries){
-  for(extension in extensions){
-    footprint(country = country, extension = extension, allocation = allocation)
+for(allocation in allocations){
+  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_mass.rds"))
+  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_value.rds"))
+  
+  for(country in countries){
+    for(extension in extensions){
+      footprint(country = country, extension = extension, allocation = allocation)
+    }
   }
 }
 
