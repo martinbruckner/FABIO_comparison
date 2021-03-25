@@ -126,6 +126,7 @@ extensions <- colnames(Ei)[c(8,10:11)]
 countries <- c("US","CA","AU","EU")
 countries <- "AT"
 countries <- "EU27"
+country <- "EU27"
 extension <- "landuse"
 allocation <- "value"
 

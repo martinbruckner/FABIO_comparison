@@ -93,10 +93,14 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
   fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_detailed.csv"), sep=",")
   
   data <- results %>% 
-    group_by(final_product, continent_origin) %>% 
+    mutate(group = ifelse(group_origin=="Grazing", "Grazing", "Crops")) %>%
+    mutate(group = ifelse(grepl("Livestock", group_origin), "Livestock", group)) %>% 
+    #mutate(group = ifelse(group_origin=="Fish", "Livestock", group)) %>%    # fish has no direct land or water use
+    mutate(group = paste(group, continent_origin, sep = "_")) %>% 
+    group_by(final_product, group) %>% 
     filter(value != 0) %>% 
     summarise(value = round(sum(value))) %>% 
-    spread(continent_origin, value, fill = 0)
+    spread(group, value, fill = 0)
   data.table::fwrite(data, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_continent.csv"), sep=",")
   
   # data <- results %>% 
