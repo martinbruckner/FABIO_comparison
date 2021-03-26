@@ -65,7 +65,7 @@ footprint <- function(country = "EU", extension = "cropland", extensions = exten
   
   results$group_origin <- IO.codes$Sector.Group[match(results$item_origin, IO.codes$Product.Name)]
   results$group_target <- IO.codes$Sector.Group[match(results$final_product, IO.codes$Product.Name)]
-  results$continent_origin <- IO.codes$Region.Code[match(results$country_origin, IO.codes$Country.Code)]
+  results$continent_origin <- conc_reg$continent[match(results$country_origin, conc_reg$exiobase_code)]
   results$continent_origin[results$country_origin==country] <- country
   
   data <- results %>%
@@ -119,7 +119,8 @@ load(file="/mnt/nfs_fineprint/tmp/exiobase/pxp/IO.codes.RData")
 E_fabio <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
 E_fabio <- E_fabio[[as.character(year)]]
 
-# Harmonize environmental data
+
+# Harmonize environmental data -------------------------------------------
 conc_reg <- fread("input/reg_fabio_exio.csv")
 conc_items <- fread("input/items_fabio_exio.csv")
 

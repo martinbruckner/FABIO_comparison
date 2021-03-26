@@ -124,6 +124,7 @@ year <- 2012
 Xi <- X[, as.character(year)]
 Yi <- Y[[as.character(year)]]
 Ei <- E[[as.character(year)]]
+fwrite(Ei, "output/extensions_2012.csv")
 
 Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
 Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
