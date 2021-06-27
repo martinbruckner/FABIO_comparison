@@ -29,8 +29,8 @@ index <- data.table(code = rep(regions$code, each = nrcom),
                     item = rep(items$item, nrreg),
                     group = rep(items$group, nrreg))
 
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/X.rds"))
-Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/Y.rds"))
+X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/X.rds"))
+Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/Y.rds"))
 E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
 
 
@@ -132,9 +132,10 @@ Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
 Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
 
 extensions <- colnames(Ei)[c(8,10:11)]
-consumption_categories <- c("food","other","stock_addition","balancing","losses")
-countries <- c("USA","CAN","AUS","EU27")
-countries <- c("DEU")
+# consumption_categories <- c("food","other","stock_addition","losses","balancing")
+consumption_categories <- c("food","other","stock_addition","balancing")
+# countries <- c("USA","CAN","AUS","EU27")
+# countries <- c("DEU")
 countries <- "EU27"
 allocation = "mass"
 country = "EU27"
@@ -142,8 +143,8 @@ extension = "landuse"
 consumption = "food"
 
 for(allocation in allocations){
-  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_mass.rds"))
-  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/",year,"_L_value.rds"))
+  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/",year,"_L_mass.rds"))
+  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/",year,"_L_value.rds"))
   
   for(country in countries){
     for(extension in extensions){

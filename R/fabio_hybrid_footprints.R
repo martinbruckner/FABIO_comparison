@@ -27,7 +27,7 @@ index <- data.table(code = rep(regions$code, each = nrcom),
                     item = rep(items$item, nrreg),
                     group = rep(items$group, nrreg))
 
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/X.rds"))
+X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/X.rds"))
 E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
 load(file="/mnt/nfs_fineprint/tmp/exiobase/Y.codes.RData")
 load(file="/mnt/nfs_fineprint/tmp/exiobase/pxp/IO.codes.RData")
@@ -133,8 +133,8 @@ allocation <- "value"
 
 # calculate footprints
 for(allocation in allocations){
-  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_mass.rds"))
-  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/",year,"_B_inv_value.rds"))
+  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/losses/",year,"_B_inv_mass.rds"))
+  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/hybrid/losses/",year,"_B_inv_value.rds"))
   
   for(country in countries){
     for(extension in extensions){
