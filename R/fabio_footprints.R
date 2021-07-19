@@ -16,8 +16,6 @@ agg <- function(x) { x <- as.matrix(x) %*% sapply(unique(colnames(x)),"==",colna
 # Make intitial settings
 #-------------------------------------------------------------------------
 # read region classification
-# regions <- fread(file="./input/regions_full.csv")
-# regions <- regions[cbs==TRUE]
 regions <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/regions.csv")
 # read commodity classification
 items <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/items.csv")
