@@ -116,13 +116,13 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
 allocations = c("mass","value")
-year <- 2012
+year <- 2013
 
 # Read data
 Xi <- X[, as.character(year)]
 Yi <- Y[[as.character(year)]]
 Ei <- E[[as.character(year)]]
-fwrite(Ei, "output/extensions_2012.csv")
+# fwrite(Ei, "output/extensions_2012.csv")
 
 Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
 Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
@@ -135,7 +135,7 @@ consumption_categories <- c("food","other","stock_addition","balancing")
 # countries <- c("USA","CAN","AUS","EU27")
 # countries <- c("DEU")
 countries <- "EU27"
-allocation = "mass"
+allocation = "value"
 country = "EU27"
 extension = "landuse"
 consumption = "food"
