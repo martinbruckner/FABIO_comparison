@@ -16,9 +16,9 @@ agg <- function(x) { x <- as.matrix(x) %*% sapply(unique(colnames(x)),"==",colna
 # Make intitial settings
 #-------------------------------------------------------------------------
 # read region classification
-regions <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/regions.csv")
+regions <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v1.2/regions.csv")
 # read commodity classification
-items <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/items.csv")
+items <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v1.2/items.csv")
 nrreg <- nrow(regions)
 nrcom <- nrow(items)
 index <- data.table(code = rep(regions$code, each = nrcom),
@@ -27,9 +27,9 @@ index <- data.table(code = rep(regions$code, each = nrcom),
                     item = rep(items$item, nrreg),
                     group = rep(items$group, nrreg))
 
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/X.rds"))
-Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/Y.rds"))
-E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
+X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/losses/X.rds"))
+Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/losses/Y.rds"))
+E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/E.rds"))
 
 
 # country = "EU27"
@@ -116,7 +116,7 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
 allocations = c("mass","value")
-year <- 2013
+year <- 2019
 
 # Read data
 Xi <- X[, as.character(year)]
@@ -125,8 +125,8 @@ Ei <- E[[as.character(year)]]
 # fwrite(Ei, "output/extensions_2012.csv")
 
 Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
-Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
-Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
+Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$area_code)]
+Y_codes$continent = regions$region[match(Y_codes$iso3c,regions$iso3c)]
 Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
 
 extensions <- colnames(Ei)[c(8,10:11)]
@@ -142,7 +142,7 @@ consumption = "food"
 
 for(allocation in allocations){
   if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/",year,"_L_mass.rds"))
-  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/",year,"_L_value.rds"))
+  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/losses/",year,"_L_value.rds"))
   
   for(country in countries){
     for(extension in extensions){
