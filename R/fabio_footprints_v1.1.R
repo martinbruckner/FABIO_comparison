@@ -15,15 +15,35 @@ agg <- function(x) { x <- as.matrix(x) %*% sapply(unique(colnames(x)),"==",colna
 #-------------------------------------------------------------------------
 # Make intitial settings
 #-------------------------------------------------------------------------
+
+# SETTING SYSTEM- AND CALCULATION-SPECIFIC VARIABLES
+files_folder <- "input/data/" # put the required files (regions.csv, items.csv, X.rds etc. here)
+
+# CALCULATION SETUP
+countries <- c("DEU") # one or multiple
+extensions <- c("landuse") #one or multiple
+allocations <- c("mass") # one or multiple ("value", "mass")
+consumption_categories <- c("food") # one or multiple ("food","other","stock_addition","balancing")
+years <- c(2013) # one or multiple
+
+
+
+
 # select fabio version
-vers <- "1.1" # or "1.2"
+vers <- "1.1" # or "1.2" # No longer affects paths determined by 'files_folder' variable
 
 # load FABIO data
-Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/Y.rds"))
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/X.rds")) # total output
+Y <- readRDS(file=paste0(files_folder, "v", vers, "/Y.rds"))
+X <- readRDS(file=paste0(files_folder, "v", vers, "/X.rds")) # total output
+
+# Question: why 'losses' in the path?
+# Y <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/Y.rds"))
+# X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/X.rds")) # total output
 
 # load and prepare extensions
-E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.1/E.rds")) # environmental extensions
+E <- readRDS(file=paste0(files_folder, "v", vers, "/E.rds")) # environmental extensions
+# E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.1/E.rds")) # environmental extensions
+
 # # NOTE: all extensions currently only available for v1.2!
 # E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/E.rds")) # environmental extensions
 # E_ghg <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.2/gwp_value.rds"))
@@ -37,9 +57,12 @@ E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v1.1/E.rds")) # environme
 # E <- Map(function(e, e_ghg, e_luh){cbind(e,"ghg" = e_ghg*1000, "luh" = e_luh*1000)},E, E_ghg_agg, E_luh2_agg)
 
 # read region classification
-regions <- fread(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/regions.csv"))
+regions <- fread(file=paste0(files_folder, "v", vers, "/regions.csv"))
+# regions <- fread(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/regions.csv"))
+
 # read commodity classification
-items <- fread(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/items.csv"))
+items <- fread(file=paste0(files_folder, "v", vers, "/items.csv"))
+# items <- fread(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/items.csv"))
 nrreg <- nrow(regions)
 nrcom <- nrow(items)
 # create index of all region-commodity combinations
@@ -64,18 +87,31 @@ index <- data.table(area_code = rep(regions$code, each = nrcom),
 #   }
 # }
 
-
-
 # country = "EU27"
 # extension = "landuse"
 # consumption = "food"
 # allocation = "value"
 
-footprint <- function(country = "EU27", extension = "landuse", consumption = "food", allocation = "value"){
+footprint <- function(country="EU27", extension="landuse", consumption="food", allocation ="value", year=2013){
+  #-------------------------------------------------------------------------
+  # Reading year-specific data
+  #-------------------------------------------------------------------------
+  L <- readRDS(file=paste0(files_folder, "v", vers, "/", year,"_L_", allocation, ".rds"))
+  
+  Xi <- X[, as.character(year)]
+  Yi <- Y[[as.character(year)]]
+  Ei <- E[[as.character(year)]]
+  # fwrite(Ei, "output/extensions_2012.csv")
+  
+  Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
+  Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
+  Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
+  Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
+  
   #-------------------------------------------------------------------------
   # Prepare Multipliers
   #-------------------------------------------------------------------------
-  ext <- as.vector(as.matrix(as.vector(Ei[, ..extension]) / as.vector(Xi)))
+  ext <- as.vector(as.matrix(as.vector(Ei[, ..extension])[[extension]] / as.vector(Xi))) # 'extension' index-call fixes bug
   ext[!is.finite(ext)] <- 0
   # ext[ext < 0] <- 0         # eliminate negative values
   MP <- ext * L
@@ -149,45 +185,21 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
 #-------------------------------------------------------------------------
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
-allocations = c("mass","value")
-year <- 2013
 
-# Read data
-Xi <- X[, as.character(year)]
-Yi <- Y[[as.character(year)]]
-Ei <- E[[as.character(year)]]
-# fwrite(Ei, "output/extensions_2012.csv")
-
-Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
-Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$code)]
-Y_codes$continent = regions$continent[match(Y_codes$iso3c,regions$iso3c)]
-Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
-
-extensions <- colnames(Ei)[c(10:18)]
-# consumption_categories <- c("food","other","stock_addition","losses","balancing")
-consumption_categories <- c("food","other","stock_addition","balancing")
-# countries <- c("USA","CAN","AUS","EU27")
-# countries <- c("DEU")
-countries <- "EU27"
-allocation = "value"
-country = "EU27"
-extension = "landuse"
-consumption = "food"
+# extensions <- colnames(Ei)[c(10:18)] # set above, but what are they?
 
 for(allocation in allocations){
-  if(allocation=="mass") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/",year,"_L_mass.rds"))
-  if(allocation=="value") L <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v",vers,"/losses/",year,"_L_value.rds"))
-  
   for(country in countries){
     for(extension in extensions){
       for(consumption in consumption_categories){
-        # calculate footprints
-        footprint(country = country, extension = extension, consumption = consumption, allocation = allocation)
+        for(year in years){
+          # calculate footprints
+          footprint(country = country, extension = extension, consumption = consumption, allocation = allocation, year = year)
+        }
       }
     }
   }
 }
-
 
 
 

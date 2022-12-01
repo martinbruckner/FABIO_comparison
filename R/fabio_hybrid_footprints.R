@@ -13,12 +13,17 @@ agg <- function(x) { x <- as.matrix(x) %*% sapply(unique(colnames(x)),"==",colna
 
 
 #-------------------------------------------------------------------------
-# Make intitial settings
+# Make initial settings
 #-------------------------------------------------------------------------
+
+# SETTING SYSTEM- AND CALCULATION-SPECIFIC VARIABLES
+files_folder <- "data/" # put the required files (regions.csv, items.csv, X.rds etc. here)
+
+
 # read region classification
-regions <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/regions.csv")
+regions <- fread(file=paste0(files_folder, "regions.csv"))
 # read commodity classification
-items <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v2/items.csv")
+items <- fread(file=paste0(files_folder, "items.csv"))
 nrreg <- nrow(regions)
 nrcom <- nrow(items)
 index <- data.table(code = rep(regions$code, each = nrcom),
@@ -27,8 +32,9 @@ index <- data.table(code = rep(regions$code, each = nrcom),
                     item = rep(items$item, nrreg),
                     group = rep(items$group, nrreg))
 
-X <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/losses/X.rds"))
-E <- readRDS(file=paste0("/mnt/nfs_fineprint/tmp/fabio/v2/E.rds"))
+X <- readRDS(file=paste0(files_folder, "X.rds"))
+E <- readRDS(file=paste0(files_folder, "E.rds"))
+# TODO: Figure these files out; they seem to be exclusive to the hybrid version 
 load(file="/mnt/nfs_fineprint/tmp/exiobase/Y.codes.RData")
 load(file="/mnt/nfs_fineprint/tmp/exiobase/pxp/IO.codes.RData")
 
