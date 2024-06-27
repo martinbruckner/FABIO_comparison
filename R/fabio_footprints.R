@@ -41,7 +41,7 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
   #-------------------------------------------------------------------------
   # Prepare Multipliers
   #-------------------------------------------------------------------------
-  ext <- as.vector(as.matrix(as.vector(Ei[, ..extension]) / as.vector(Xi)))
+  ext <- as.vector(as.matrix(as.numeric(unlist(Ei[, ..extension])) / as.vector(Xi)))
   ext[!is.finite(ext)] <- 0
   # ext[ext < 0] <- 0         # eliminate negative values
   MP <- ext * L
@@ -77,7 +77,7 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
   
   results$group_origin <- items$comm_group[match(results$item_origin,items$item)]
   results$final_product_group <- items$comm_group[match(results$final_product,items$item)]
-  results$continent_origin <- regions$continent[match(results$country_origin, regions$iso3c)]
+  results$continent_origin <- regions$region[match(results$country_origin, regions$iso3c)]
   results$continent_origin[results$country_origin==country] <- country
   
   # fwrite(results, file=paste0("./output/FABIO_",country,"_",year,"_",extension,"_",consumption,"_",allocation,"-alloc_full.csv"), sep=",")
@@ -116,7 +116,7 @@ footprint <- function(country = "EU27", extension = "landuse", consumption = "fo
 # Calculate detailed footprints
 #-------------------------------------------------------------------------
 allocations = c("mass","value")
-year <- 2019
+year <- 2020
 
 # Read data
 Xi <- X[, as.character(year)]
@@ -124,10 +124,11 @@ Yi <- Y[[as.character(year)]]
 Ei <- E[[as.character(year)]]
 # fwrite(Ei, "output/extensions_2012.csv")
 
-Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
-Y_codes$iso3c = regions$iso3c[match(Y_codes$code,regions$area_code)]
+Y_codes <- fread(file="/mnt/nfs_fineprint/tmp/fabio/v1.2/losses/fd_codes.csv")
+# Y_codes <- data.frame(code = substr(colnames(Yi), 1, str_locate(colnames(Yi), "_")[,1]-1))
+Y_codes$iso3c = regions$iso3c[match(Y_codes$area_code,regions$area_code)]
 Y_codes$continent = regions$region[match(Y_codes$iso3c,regions$iso3c)]
-Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
+# Y_codes$fd <- substr(colnames(Yi), str_locate(colnames(Yi), "_")[,1]+1, 100)
 
 extensions <- colnames(Ei)[c(8,10:11)]
 # consumption_categories <- c("food","other","stock_addition","losses","balancing")
